@@ -2,12 +2,12 @@ package com.example.innowise_vitali_order_service;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication
-public class InnowiseVitaliOrderServiceApplication {
-
+@EnableFeignClients
+public class OrderServiceApplication {
     public static void main(String[] args) {
-        SpringApplication.run(InnowiseVitaliOrderServiceApplication.class, args);
+        SpringApplication.run(OrderServiceApplication.class, args);
     }
-
 }
