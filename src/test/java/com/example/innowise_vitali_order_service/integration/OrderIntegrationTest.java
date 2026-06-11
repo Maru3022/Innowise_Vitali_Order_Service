@@ -6,6 +6,7 @@ import com.example.innowise_vitali_order_service.entity.Item;
 import com.example.innowise_vitali_order_service.repository.ItemRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,7 +26,6 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -69,7 +69,8 @@ class OrderIntegrationTest {
         savedItem = itemRepository.save(Item.builder()
                 .name("Test Item").price(new BigDecimal("25.00")).build());
 
-        wireMock.stubFor(get(urlPathEqualTo("/api/users/by-email"))
+        // Используем WireMock.get явно, чтобы избежать конфликта с MockMvcRequestBuilders.get
+        wireMock.stubFor(WireMock.get(urlPathEqualTo("/api/users/by-email"))
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"id\":1,\"email\":\"1@placeholder.com\",\"firstName\":\"Test\",\"lastName\":\"User\"}")
@@ -99,6 +100,7 @@ class OrderIntegrationTest {
 
     @Test
     void getOrder_shouldReturn404_whenNotFound() throws Exception {
+        // Теперь компилятор четко знает, что этот get() берется из MockMvcRequestBuilders
         mockMvc.perform(get("/api/orders/9999"))
                 .andExpect(status().isNotFound());
     }
