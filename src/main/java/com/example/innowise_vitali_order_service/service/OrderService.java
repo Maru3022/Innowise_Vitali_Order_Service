@@ -1,11 +1,12 @@
 package com.example.innowise_vitali_order_service.service;
 
 import com.example.innowise_vitali_order_service.dto.request.CreateOrderRequest;
+import com.example.innowise_vitali_order_service.dto.request.UpdateOrderRequest;
 import com.example.innowise_vitali_order_service.dto.response.OrderResponse;
 import com.example.innowise_vitali_order_service.entity.OrderStatus;
-import org.hibernate.query.Page;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.awt.print.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,6 +25,7 @@ public interface OrderService {
 
     List<OrderResponse> getOrdersByUserId(Long id);
 
-    OrderResponse updateOrder(Long id, CreateOrderRequest request);
+    OrderResponse updateOrder(Long id, UpdateOrderRequest request);
+
     void deleteOrder(Long id);
 }

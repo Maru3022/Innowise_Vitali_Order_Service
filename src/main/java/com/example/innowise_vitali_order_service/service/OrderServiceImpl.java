@@ -10,6 +10,8 @@ import com.example.innowise_vitali_order_service.entity.Item;
 import com.example.innowise_vitali_order_service.entity.Order;
 import com.example.innowise_vitali_order_service.entity.OrderItem;
 import com.example.innowise_vitali_order_service.entity.OrderStatus;
+import com.example.innowise_vitali_order_service.exception.ItemNotFoundException;
+import com.example.innowise_vitali_order_service.exception.OrderNotFoundException;
 import com.example.innowise_vitali_order_service.mapper.OrderMapper;
 import com.example.innowise_vitali_order_service.repository.ItemRepository;
 import com.example.innowise_vitali_order_service.repository.OrderRepository;
@@ -28,6 +30,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -41,7 +44,6 @@ public class OrderServiceImpl implements OrderService {
         Order order = Order.builder()
                 .userId(request.userId())
                 .status(OrderStatus.PENDING)
-                .totalPrice(BigDecimal.ZERO)
                 .build();
 
         BigDecimal total = BigDecimal.ZERO;
@@ -55,39 +57,29 @@ public class OrderServiceImpl implements OrderService {
             order.addOrderItem(orderItem);
             total = total.add(item.getPrice().multiply(BigDecimal.valueOf(itemReq.quantity())));
         }
-
         order.setTotalPrice(total);
+
         Order saved = orderRepository.save(order);
-        UserInfo userInfo = fetchUserInfo(saved.getUserId());
-        return orderMapper.toResponseWithUser(saved, userInfo);
+        return orderMapper.toResponseWithUser(saved, fetchUserInfo(saved.getUserId()));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public OrderResponse getOrderById(Long id) {
         Order order = findById(id);
         return orderMapper.toResponseWithUser(order, fetchUserInfo(order.getUserId()));
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Page<OrderResponse> getOrders(
-            LocalDateTime createdFrom, LocalDateTime createdTo,
-            List<OrderStatus> statuses, Pageable pageable
-    ) {
-        Specification<Order> spec = OrderSpecification
-                .withFilters(createdFrom, createdTo, statuses, null);
+    public Page<OrderResponse> getOrders(LocalDateTime createdFrom, LocalDateTime createdTo, List<OrderStatus> statuses, Pageable pageable) {
+        Specification<Order> spec = OrderSpecification.withFilters(createdFrom, createdTo, statuses, null);
         return orderRepository.findAll(spec, pageable)
-                .map(o -> orderMapper.toResponseWithUser(o, fetchUserInfo(o.getUserId())));
+                .map(order -> orderMapper.toResponseWithUser(order, fetchUserInfo(order.getUserId())));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByUserId(Long userId) {
-        List<Order> orders = orderRepository.findAllByUserId(userId);
-        UserInfo userInfo = orders.isEmpty() ? null : fetchUserInfo(userId);
-        return orders.stream()
-                .map(o -> orderMapper.toResponseWithUser(o, userInfo))
+        return orderRepository.findAllByUserId(userId).stream()
+                .map(order -> orderMapper.toResponseWithUser(order, fetchUserInfo(order.getUserId())))
                 .toList();
     }
 
@@ -95,7 +87,6 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponse updateOrder(Long id, UpdateOrderRequest request) {
         Order order = findById(id);
-
         if (request.status() != null) {
             order.setStatus(request.status());
         }
@@ -121,7 +112,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void deleteOrder(Long id) {
         Order order = findById(id);
-        order.softDelete();
+        order.setDeleted(true);
         orderRepository.save(order);
     }
 
