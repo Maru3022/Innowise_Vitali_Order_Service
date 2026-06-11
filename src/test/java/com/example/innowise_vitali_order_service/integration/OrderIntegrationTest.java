@@ -18,7 +18,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.RequestBuilder;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -100,7 +99,7 @@ class OrderIntegrationTest {
 
     @Test
     void getOrder_shouldReturn404_whenNotFound() throws Exception {
-        mockMvc.perform((RequestBuilder) get("/api/orders/9999"))
+        mockMvc.perform(get("/api/orders/9999"))
                 .andExpect(status().isNotFound());
     }
 
@@ -118,7 +117,7 @@ class OrderIntegrationTest {
         mockMvc.perform(delete("/api/orders/" + orderId))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform((RequestBuilder) get("/api/orders/" + orderId))
+        mockMvc.perform(get("/api/orders/" + orderId))
                 .andExpect(status().isNotFound());
     }
 }
