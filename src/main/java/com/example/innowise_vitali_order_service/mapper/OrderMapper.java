@@ -7,8 +7,8 @@ import com.example.innowise_vitali_order_service.entity.Order;
 import com.example.innowise_vitali_order_service.entity.OrderItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import java.util.List;
 
+import java.util.List;
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
 

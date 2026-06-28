@@ -122,11 +122,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private UserInfo fetchUserInfo(Long userId) {
-        try {
-            return userServiceClient.getUserByEmail(userId + "@placeholder.com");
-        } catch (Exception e) {
-            log.warn("Could not fetch user info for userId={}: {}", userId, e.getMessage());
-            return null;
-        }
+        return userServiceClient.getUserById(userId);
     }
 }
