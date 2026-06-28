@@ -29,6 +29,10 @@ jobs:
       - name: Run Tests
         run: mvn test
 
+      - name: Print surefire reports on failure
+        if: failure()
+        run: find target/surefire-reports -name "*.txt" -exec cat {} \;
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
