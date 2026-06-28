@@ -14,10 +14,6 @@ import java.util.List;
 @NoArgsConstructor @AllArgsConstructor @Builder
 public class Order extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
