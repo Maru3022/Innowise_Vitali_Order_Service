@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 class OrderIntegrationTest {
 
+    static final int WIRE_MOCK_PORT = 8082;
     private static WireMockServer wireMockServer;
 
     @Container
@@ -43,28 +44,37 @@ class OrderIntegrationTest {
 
     private Item savedItem;
 
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
-
     @BeforeAll
     static void startWireMock() {
-        wireMockServer = new WireMockServer(8082);
+        wireMockServer = new WireMockServer(WIRE_MOCK_PORT);
         wireMockServer.start();
     }
 
     @AfterAll
     static void stopWireMock() {
-        wireMockServer.stop();
+        if (wireMockServer != null) {
+            wireMockServer.stop();
+        }
+    }
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.cloud.openfeign.client.config.user-service.url",
+                () -> "http://localhost:" + WIRE_MOCK_PORT);
     }
 
     @BeforeEach
     void setup() {
         itemRepository.deleteAll();
-        savedItem = itemRepository.save(Item.builder().name("Test Item").price(new java.math.BigDecimal("10.00")).build());
+        savedItem = itemRepository.save(
+                Item.builder()
+                        .name("Test Item")
+                        .price(new java.math.BigDecimal("10.00"))
+                        .build()
+        );
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.example.innowise_vitali_order_service;
 
+import com.example.innowise_vitali_order_service.client.UserServiceClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -14,6 +16,9 @@ class InnowiseVitaliOrderServiceApplicationTests {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
+
+    @MockBean
+    UserServiceClient userServiceClient;
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
