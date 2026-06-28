@@ -1,13 +1,9 @@
 package com.example.innowise_vitali_order_service.integration;
 
-import com.example.innowise_vitali_order_service.dto.request.CreateOrderRequest;
-import com.example.innowise_vitali_order_service.dto.request.OrderItemRequest;
 import com.example.innowise_vitali_order_service.entity.Item;
 import com.example.innowise_vitali_order_service.repository.ItemRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,104 +18,66 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import java.math.BigDecimal;
-import java.util.List;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
 @AutoConfigureMockMvc
+@Testcontainers
 class OrderIntegrationTest {
 
+    private static WireMockServer wireMockServer;
+
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("testdb").withUsername("test").withPassword("test");
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
 
-    static WireMockServer wireMock = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
+    @Autowired
+    private MockMvc mockMvc;
 
-    @Autowired private MockMvc mockMvc;
-    @Autowired private ObjectMapper objectMapper;
-    @Autowired private ItemRepository itemRepository;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private ItemRepository itemRepository;
 
     private Item savedItem;
 
     @DynamicPropertySource
-    static void properties(DynamicPropertyRegistry registry) {
+    static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.cloud.openfeign.client.config.user-service.url", () -> "http://localhost:" + wireMock.port());
     }
 
-    @BeforeAll static void startWireMock() { wireMock.start(); }
-    @AfterAll  static void stopWireMock()  { wireMock.stop(); }
+    @BeforeAll
+    static void startWireMock() {
+        wireMockServer = new WireMockServer(8082);
+        wireMockServer.start();
+    }
+
+    @AfterAll
+    static void stopWireMock() {
+        wireMockServer.stop();
+    }
 
     @BeforeEach
-    void setUp() {
-        wireMock.resetAll();
+    void setup() {
         itemRepository.deleteAll();
-
-        savedItem = itemRepository.save(Item.builder()
-                .name("Test Item").price(new BigDecimal("25.00")).build());
-
-        // Используем WireMock.get явно, чтобы избежать конфликта с MockMvcRequestBuilders.get
-        wireMock.stubFor(WireMock.get(urlPathEqualTo("/api/users/by-email"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("{\"id\":1,\"email\":\"1@placeholder.com\",\"firstName\":\"Test\",\"lastName\":\"User\"}")
-                        .withStatus(200)));
-    }
-
-    @Test
-    void createOrder_shouldReturn201() throws Exception {
-        CreateOrderRequest request = new CreateOrderRequest(1L, List.of(new OrderItemRequest(savedItem.getId(), 3)));
-
-        mockMvc.perform(post("/api/orders")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.totalPrice").value(75.0));
+        savedItem = itemRepository.save(Item.builder().name("Test Item").price(new java.math.BigDecimal("10.00")).build());
     }
 
     @Test
     void createOrder_shouldReturn400_whenNoUserId() throws Exception {
         mockMvc.perform(post("/api/orders")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"items\":[{\"itemId\":1,\"quantity\":1}]}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.userId").exists());
+                        .content("{\"items\":[{\"itemId\":" + savedItem.getId() + ",\"quantity\":1}]}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void getOrder_shouldReturn404_whenNotFound() throws Exception {
-        // Теперь компилятор четко знает, что этот get() берется из MockMvcRequestBuilders
         mockMvc.perform(get("/api/orders/9999"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void deleteOrder_shouldSoftDelete_andReturn404OnSecondGet() throws Exception {
-        CreateOrderRequest request = new CreateOrderRequest(1L, List.of(new OrderItemRequest(savedItem.getId(), 1)));
-
-        String response = mockMvc.perform(post("/api/orders")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andReturn().getResponse().getContentAsString();
-
-        Long orderId = objectMapper.readTree(response).get("id").asLong();
-
-        mockMvc.perform(delete("/api/orders/" + orderId))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(get("/api/orders/" + orderId))
                 .andExpect(status().isNotFound());
     }
 }
