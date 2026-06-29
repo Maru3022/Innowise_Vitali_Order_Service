@@ -16,5 +16,19 @@ spring:
           user-service:
             url: ${USER_SERVICE_URL:http://localhost:8082}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:order-service-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.example.innowise_vitali_order_service.kafka"
+
+kafka:
+  topic:
+    payment: ${KAFKA_TOPIC_PAYMENT:CREATE_PAYMENT}
+
 server:
   port: ${SERVER_PORT:8083}
