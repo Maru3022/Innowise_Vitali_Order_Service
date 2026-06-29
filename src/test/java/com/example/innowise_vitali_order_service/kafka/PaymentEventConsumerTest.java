@@ -2,7 +2,6 @@ package com.example.innowise_vitali_order_service.kafka;
 
 import com.example.innowise_vitali_order_service.entity.Order;
 import com.example.innowise_vitali_order_service.entity.OrderStatus;
-import com.example.innowise_vitali_order_service.exception.OrderNotFoundException;
 import com.example.innowise_vitali_order_service.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,11 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,11 +39,9 @@ class PaymentEventConsumerTest {
 
     @Test
     void consume_shouldSetStatusPaid_whenPaymentSuccess() {
-        PaymentEvent event = buildEvent("SUCCESS");
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
 
-        consumer.consume(event, "CREATE_PAYMENT", 0L);
+        consumer.consume(buildEvent(PaymentStatus.SUCCESS));
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
@@ -55,11 +50,9 @@ class PaymentEventConsumerTest {
 
     @Test
     void consume_shouldSetStatusCancelled_whenPaymentFailed() {
-        PaymentEvent event = buildEvent("FAILED");
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
 
-        consumer.consume(event, "CREATE_PAYMENT", 1L);
+        consumer.consume(buildEvent(PaymentStatus.FAILED));
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
@@ -67,44 +60,54 @@ class PaymentEventConsumerTest {
     }
 
     @Test
-    void consume_shouldThrowOrderNotFoundException_whenOrderNotFound() {
-        PaymentEvent event = buildEvent("SUCCESS");
+    void consume_shouldSetStatusCancelled_whenPaymentRejected() {
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        consumer.consume(buildEvent(PaymentStatus.REJECTED));
+
+        ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @Test
+    void consume_shouldSkip_whenOrderNotFound() {
         when(orderRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> consumer.consume(event, "CREATE_PAYMENT", 2L))
-                .isInstanceOf(OrderNotFoundException.class)
-                .hasMessageContaining("1");
+        consumer.consume(buildEvent(PaymentStatus.SUCCESS));
 
         verify(orderRepository, never()).save(any());
     }
 
     @Test
-    void consume_shouldSkipSave_whenStatusIsUnknown() {
-        PaymentEvent event = buildEvent("PENDING");
-
-        consumer.consume(event, "CREATE_PAYMENT", 3L);
+    void consume_shouldSkip_whenStatusIsPending() {
+        consumer.consume(buildEvent(PaymentStatus.PENDING));
 
         verify(orderRepository, never()).findById(any());
         verify(orderRepository, never()).save(any());
     }
 
     @Test
-    void consume_shouldSkipSave_whenStatusIsNull() {
-        PaymentEvent event = buildEvent(null);
+    void consume_shouldSkip_whenOrderIdIsInvalidFormat() {
+        PaymentEvent event = PaymentEvent.builder()
+                .paymentId("pay-001")
+                .orderId("not-a-number")
+                .userId("42")
+                .status(PaymentStatus.SUCCESS)
+                .build();
 
-        consumer.consume(event, "CREATE_PAYMENT", 4L);
+        consumer.consume(event);
 
         verify(orderRepository, never()).findById(any());
         verify(orderRepository, never()).save(any());
     }
 
-    private PaymentEvent buildEvent(String status) {
+    private PaymentEvent buildEvent(PaymentStatus status) {
         return PaymentEvent.builder()
                 .paymentId("pay-001")
-                .orderId(1L)
+                .orderId("1")
+                .userId("42")
                 .status(status)
-                .amount(BigDecimal.TEN)
-                .createdAt(LocalDateTime.now())
                 .build();
     }
 }

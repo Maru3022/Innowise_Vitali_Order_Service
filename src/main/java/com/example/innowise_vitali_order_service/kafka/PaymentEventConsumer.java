@@ -2,14 +2,10 @@ package com.example.innowise_vitali_order_service.kafka;
 
 import com.example.innowise_vitali_order_service.entity.Order;
 import com.example.innowise_vitali_order_service.entity.OrderStatus;
-import com.example.innowise_vitali_order_service.exception.OrderNotFoundException;
 import com.example.innowise_vitali_order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,47 +22,41 @@ public class PaymentEventConsumer {
             containerFactory = "kafkaListenerContainerFactory"
     )
     @Transactional
-    public void consume(
-            @Payload PaymentEvent event,
-            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-            @Header(KafkaHeaders.OFFSET) long offset
-    ) {
-        log.info("Received PaymentEvent from topic='{}' offset={}: paymentId={}, orderId={}, status={}",
-                topic, offset, event.getPaymentId(), event.getOrderId(), event.getStatus());
+    public void consume(PaymentEvent event) {
+        log.info("Received PaymentEvent: paymentId={}, orderId={}, status={}",
+                event.getPaymentId(), event.getOrderId(), event.getStatus());
 
-        OrderStatus newStatus = resolveOrderStatus(event.getStatus());
+        OrderStatus newStatus = switch (event.getStatus()) {
+            case SUCCESS           -> OrderStatus.PAID;
+            case FAILED, REJECTED  -> OrderStatus.CANCELLED;
+            default                -> null;
+        };
+
         if (newStatus == null) {
-            log.warn("Unknown payment status '{}' for paymentId={}, orderId={} — skipping",
-                    event.getStatus(), event.getPaymentId(), event.getOrderId());
+            log.warn("Ignoring PaymentEvent with status={} for orderId={}",
+                    event.getStatus(), event.getOrderId());
             return;
         }
 
-        Order order = orderRepository.findById(event.getOrderId())
-                .orElseThrow(() -> {
-                    log.error("Order not found for orderId={} from paymentId={}",
-                            event.getOrderId(), event.getPaymentId());
-                    return new OrderNotFoundException(event.getOrderId());
-                });
+        Long orderId;
+        try {
+            orderId = Long.parseLong(event.getOrderId());
+        } catch (NumberFormatException e) {
+            log.error("Invalid orderId format '{}' in paymentId={}",
+                    event.getOrderId(), event.getPaymentId());
+            return;
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            log.error("Order not found: orderId={}, paymentId={}", orderId, event.getPaymentId());
+            return;
+        }
 
         order.setStatus(newStatus);
         orderRepository.save(order);
 
-        log.info("Order id={} status updated to {} based on paymentId={}",
+        log.info("Order {} status updated to {} (paymentId={})",
                 order.getId(), newStatus, event.getPaymentId());
-    }
-
-    /**
-     * Maps payment status string to OrderStatus.
-     * Returns null for unknown statuses so the message is skipped without retrying.
-     */
-    private OrderStatus resolveOrderStatus(String paymentStatus) {
-        if (paymentStatus == null) {
-            return null;
-        }
-        return switch (paymentStatus.toUpperCase()) {
-            case "SUCCESS" -> OrderStatus.PAID;
-            case "FAILED"  -> OrderStatus.CANCELLED;
-            default        -> null;
-        };
     }
 }
