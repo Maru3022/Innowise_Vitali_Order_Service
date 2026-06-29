@@ -4,6 +4,7 @@ import com.example.innowise_vitali_order_service.client.UserServiceClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -12,6 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @Testcontainers
+@EmbeddedKafka(partitions = 1, topics = {"CREATE_PAYMENT"})
 class InnowiseVitaliOrderServiceApplicationTests {
 
     @Container
