@@ -25,10 +25,14 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "com.example.innowise_vitali_order_service.kafka"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 kafka:
   topic:
-    payment: ${KAFKA_TOPIC_PAYMENT:CREATE_PAYMENT}
+    create-payment: ${KAFKA_TOPIC_CREATE_PAYMENT:CREATE_PAYMENT}
+    payment-result: ${KAFKA_TOPIC_PAYMENT_RESULT:PAYMENT_RESULT}
 
 server:
   port: ${SERVER_PORT:8083}

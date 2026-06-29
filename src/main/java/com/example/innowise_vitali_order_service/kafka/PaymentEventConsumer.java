@@ -17,7 +17,7 @@ public class PaymentEventConsumer {
     private final OrderRepository orderRepository;
 
     @KafkaListener(
-            topics = "${kafka.topic.payment}",
+            topics = "${kafka.topic.payment-result}",
             groupId = "${spring.kafka.consumer.group-id}",
             containerFactory = "kafkaListenerContainerFactory"
     )

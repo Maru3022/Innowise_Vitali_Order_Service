@@ -24,4 +24,5 @@ spring:
 
 kafka:
   topic:
-    payment: CREATE_PAYMENT
+    create-payment: CREATE_PAYMENT
+    payment-result: PAYMENT_RESULT

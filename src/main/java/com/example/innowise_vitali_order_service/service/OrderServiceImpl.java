@@ -16,6 +16,8 @@ import com.example.innowise_vitali_order_service.mapper.OrderMapper;
 import com.example.innowise_vitali_order_service.repository.ItemRepository;
 import com.example.innowise_vitali_order_service.repository.OrderRepository;
 import com.example.innowise_vitali_order_service.repository.spec.OrderSpecification;
+import com.example.innowise_vitali_order_service.kafka.OrderCreatedEvent;
+import com.example.innowise_vitali_order_service.kafka.OrderKafkaProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -37,6 +39,7 @@ public class OrderServiceImpl implements OrderService {
     private final ItemRepository itemRepository;
     private final UserServiceClient userServiceClient;
     private final OrderMapper orderMapper;
+    private final OrderKafkaProducer orderKafkaProducer;
 
     @Override
     @Transactional
@@ -60,6 +63,13 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalPrice(total);
 
         Order saved = orderRepository.save(order);
+
+        orderKafkaProducer.publishOrderCreated(new OrderCreatedEvent(
+                String.valueOf(saved.getId()),
+                String.valueOf(saved.getUserId()),
+                saved.getTotalPrice()
+        ));
+
         return orderMapper.toResponseWithUser(saved, fetchUserInfo(saved.getUserId()));
     }
 

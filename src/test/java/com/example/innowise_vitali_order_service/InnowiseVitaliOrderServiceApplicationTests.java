@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @Testcontainers
-@EmbeddedKafka(partitions = 1, topics = {"CREATE_PAYMENT"})
+@EmbeddedKafka(partitions = 1, topics = {"CREATE_PAYMENT", "PAYMENT_RESULT"})
 class InnowiseVitaliOrderServiceApplicationTests {
 
     @Container

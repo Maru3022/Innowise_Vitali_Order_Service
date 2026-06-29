@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
-@EmbeddedKafka(partitions = 1, topics = {"CREATE_PAYMENT"})
+@EmbeddedKafka(partitions = 1, topics = {"CREATE_PAYMENT", "PAYMENT_RESULT"})
 class OrderIntegrationTest {
 
     static final int WIRE_MOCK_PORT = 8082;

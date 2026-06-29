@@ -5,6 +5,7 @@ import com.example.innowise_vitali_order_service.dto.request.UpdateOrderRequest;
 import com.example.innowise_vitali_order_service.dto.response.OrderResponse;
 import com.example.innowise_vitali_order_service.dto.response.UserInfo;
 import com.example.innowise_vitali_order_service.entity.*;
+import com.example.innowise_vitali_order_service.kafka.OrderKafkaProducer;
 import com.example.innowise_vitali_order_service.mapper.OrderMapper;
 import com.example.innowise_vitali_order_service.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,8 @@ class OrderServiceImplTest {
     private UserServiceClient userServiceClient;
     @Mock
     private OrderMapper orderMapper;
+    @Mock
+    private OrderKafkaProducer orderKafkaProducer;
 
     @InjectMocks
     private OrderServiceImpl orderService;
