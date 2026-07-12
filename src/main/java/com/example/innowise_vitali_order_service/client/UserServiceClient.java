@@ -8,10 +8,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @FeignClient(name = "user-service",
-        url = "${spring.cloud.openfeign.client.config.user-service.url}")
+        url = "${spring.cloud.openfeign.client.config.user-service.url}",
+        configuration = com.example.innowise_vitali_order_service.config.FeignInternalSecretConfig.class)
 public interface UserServiceClient {
 
-    @GetMapping("/api/users/{id}")
+    @GetMapping("/api/v1/users/{id}")
     @CircuitBreaker(name = "user-service", fallbackMethod = "getUserByIdFallback")
     UserInfo getUserById(@PathVariable("id") Long id);
 

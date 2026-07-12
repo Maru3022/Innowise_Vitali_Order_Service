@@ -23,6 +23,9 @@ class PaymentEventConsumerTest {
     @Mock
     private OrderRepository orderRepository;
 
+    @Mock
+    private AvroEventMapper avroEventMapper;
+
     @InjectMocks
     private PaymentEventConsumer consumer;
 
@@ -40,8 +43,17 @@ class PaymentEventConsumerTest {
     @Test
     void consume_shouldSetStatusPaid_whenPaymentSuccess() {
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(avroEventMapper.toPaymentDomain(any(com.example.events.PaymentEvent.class))).thenAnswer(invocation -> {
+            com.example.events.PaymentEvent event = invocation.getArgument(0);
+            return PaymentEvent.builder()
+                    .paymentId(event.getPaymentId())
+                    .orderId(event.getOrderId())
+                    .userId(event.getUserId())
+                    .status(PaymentStatus.valueOf(event.getStatus().name()))
+                    .build();
+        });
 
-        consumer.consume(buildEvent(PaymentStatus.SUCCESS));
+        consumer.consume(buildAvroEvent(PaymentStatus.SUCCESS));
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
@@ -51,8 +63,17 @@ class PaymentEventConsumerTest {
     @Test
     void consume_shouldSetStatusCancelled_whenPaymentFailed() {
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(avroEventMapper.toPaymentDomain(any(com.example.events.PaymentEvent.class))).thenAnswer(invocation -> {
+            com.example.events.PaymentEvent event = invocation.getArgument(0);
+            return PaymentEvent.builder()
+                    .paymentId(event.getPaymentId())
+                    .orderId(event.getOrderId())
+                    .userId(event.getUserId())
+                    .status(PaymentStatus.valueOf(event.getStatus().name()))
+                    .build();
+        });
 
-        consumer.consume(buildEvent(PaymentStatus.FAILED));
+        consumer.consume(buildAvroEvent(PaymentStatus.FAILED));
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
@@ -62,8 +83,17 @@ class PaymentEventConsumerTest {
     @Test
     void consume_shouldSetStatusCancelled_whenPaymentRejected() {
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(avroEventMapper.toPaymentDomain(any(com.example.events.PaymentEvent.class))).thenAnswer(invocation -> {
+            com.example.events.PaymentEvent event = invocation.getArgument(0);
+            return PaymentEvent.builder()
+                    .paymentId(event.getPaymentId())
+                    .orderId(event.getOrderId())
+                    .userId(event.getUserId())
+                    .status(PaymentStatus.valueOf(event.getStatus().name()))
+                    .build();
+        });
 
-        consumer.consume(buildEvent(PaymentStatus.REJECTED));
+        consumer.consume(buildAvroEvent(PaymentStatus.REJECTED));
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
@@ -73,15 +103,34 @@ class PaymentEventConsumerTest {
     @Test
     void consume_shouldSkip_whenOrderNotFound() {
         when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+        when(avroEventMapper.toPaymentDomain(any(com.example.events.PaymentEvent.class))).thenAnswer(invocation -> {
+            com.example.events.PaymentEvent event = invocation.getArgument(0);
+            return PaymentEvent.builder()
+                    .paymentId(event.getPaymentId())
+                    .orderId(event.getOrderId())
+                    .userId(event.getUserId())
+                    .status(PaymentStatus.valueOf(event.getStatus().name()))
+                    .build();
+        });
 
-        consumer.consume(buildEvent(PaymentStatus.SUCCESS));
+        consumer.consume(buildAvroEvent(PaymentStatus.SUCCESS));
 
         verify(orderRepository, never()).save(any());
     }
 
     @Test
     void consume_shouldSkip_whenStatusIsPending() {
-        consumer.consume(buildEvent(PaymentStatus.PENDING));
+        when(avroEventMapper.toPaymentDomain(any(com.example.events.PaymentEvent.class))).thenAnswer(invocation -> {
+            com.example.events.PaymentEvent event = invocation.getArgument(0);
+            return PaymentEvent.builder()
+                    .paymentId(event.getPaymentId())
+                    .orderId(event.getOrderId())
+                    .userId(event.getUserId())
+                    .status(PaymentStatus.valueOf(event.getStatus().name()))
+                    .build();
+        });
+
+        consumer.consume(buildAvroEvent(PaymentStatus.PENDING));
 
         verify(orderRepository, never()).findById(any());
         verify(orderRepository, never()).save(any());
@@ -89,12 +138,18 @@ class PaymentEventConsumerTest {
 
     @Test
     void consume_shouldSkip_whenOrderIdIsInvalidFormat() {
-        PaymentEvent event = PaymentEvent.builder()
+        com.example.events.PaymentEvent event = new com.example.events.PaymentEvent();
+        event.setPaymentId("pay-001");
+        event.setOrderId("not-a-number");
+        event.setUserId("42");
+        event.setStatus(com.example.events.PaymentStatus.SUCCESS);
+
+        when(avroEventMapper.toPaymentDomain(event)).thenReturn(PaymentEvent.builder()
                 .paymentId("pay-001")
                 .orderId("not-a-number")
                 .userId("42")
                 .status(PaymentStatus.SUCCESS)
-                .build();
+                .build());
 
         consumer.consume(event);
 
@@ -102,12 +157,12 @@ class PaymentEventConsumerTest {
         verify(orderRepository, never()).save(any());
     }
 
-    private PaymentEvent buildEvent(PaymentStatus status) {
-        return PaymentEvent.builder()
-                .paymentId("pay-001")
-                .orderId("1")
-                .userId("42")
-                .status(status)
-                .build();
+    private com.example.events.PaymentEvent buildAvroEvent(PaymentStatus status) {
+        com.example.events.PaymentEvent event = new com.example.events.PaymentEvent();
+        event.setPaymentId("pay-001");
+        event.setOrderId("1");
+        event.setUserId("42");
+        event.setStatus(com.example.events.PaymentStatus.valueOf(status.name()));
+        return event;
     }
 }

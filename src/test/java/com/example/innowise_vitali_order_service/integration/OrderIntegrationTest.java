@@ -81,7 +81,7 @@ class OrderIntegrationTest {
 
     @Test
     void createOrder_shouldReturn400_whenNoUserId() throws Exception {
-        mockMvc.perform(post("/api/orders")
+        mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"items\":[{\"itemId\":" + savedItem.getId() + ",\"quantity\":1}]}"))
                 .andExpect(status().isBadRequest());
@@ -89,7 +89,7 @@ class OrderIntegrationTest {
 
     @Test
     void getOrder_shouldReturn404_whenNotFound() throws Exception {
-        mockMvc.perform(get("/api/orders/9999"))
+        mockMvc.perform(get("/api/v1/orders/9999"))
                 .andExpect(status().isNotFound());
     }
 }

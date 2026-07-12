@@ -22,14 +22,14 @@ public class PaymentEventConsumer {
             containerFactory = "kafkaListenerContainerFactory"
     )
     @Transactional
-    public void consume(PaymentEvent event) {
+    public void consume(com.example.events.PaymentEvent event) {
         log.info("Received PaymentEvent: paymentId={}, orderId={}, status={}",
                 event.getPaymentId(), event.getOrderId(), event.getStatus());
 
-        OrderStatus newStatus = switch (event.getStatus()) {
-            case SUCCESS           -> OrderStatus.PAID;
-            case FAILED, REJECTED  -> OrderStatus.CANCELLED;
-            default                -> null;
+        OrderStatus newStatus = switch (event.getStatus().name()) {
+            case "SUCCESS" -> OrderStatus.PAID;
+            case "FAILED", "REJECTED" -> OrderStatus.CANCELLED;
+            default -> null;
         };
 
         if (newStatus == null) {

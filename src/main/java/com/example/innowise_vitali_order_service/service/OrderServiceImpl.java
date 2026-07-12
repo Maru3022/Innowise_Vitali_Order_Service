@@ -16,7 +16,6 @@ import com.example.innowise_vitali_order_service.mapper.OrderMapper;
 import com.example.innowise_vitali_order_service.repository.ItemRepository;
 import com.example.innowise_vitali_order_service.repository.OrderRepository;
 import com.example.innowise_vitali_order_service.repository.spec.OrderSpecification;
-import com.example.innowise_vitali_order_service.kafka.OrderCreatedEvent;
 import com.example.innowise_vitali_order_service.kafka.OrderKafkaProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -64,11 +65,28 @@ public class OrderServiceImpl implements OrderService {
 
         Order saved = orderRepository.save(order);
 
-        orderKafkaProducer.publishOrderCreated(new OrderCreatedEvent(
-                String.valueOf(saved.getId()),
-                String.valueOf(saved.getUserId()),
-                saved.getTotalPrice()
-        ));
+        Long savedOrderId = saved.getId();
+        String savedUserId = String.valueOf(saved.getUserId());
+        BigDecimal savedTotal = saved.getTotalPrice();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    orderKafkaProducer.publishOrderCreated(
+                            String.valueOf(savedOrderId),
+                            savedUserId,
+                            savedTotal
+                    );
+                }
+            });
+        } else {
+            orderKafkaProducer.publishOrderCreated(
+                    String.valueOf(savedOrderId),
+                    savedUserId,
+                    savedTotal
+            );
+        }
 
         return orderMapper.toResponseWithUser(saved, fetchUserInfo(saved.getUserId()));
     }
