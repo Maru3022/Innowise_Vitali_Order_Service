@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: online-store
+data:
+  SERVER_PORT: "8083"
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: orderdb
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_CONSUMER_GROUP_ID: order-service-group
+  KAFKA_TOPIC_CREATE_PAYMENT: CREATE_PAYMENT
+  KAFKA_TOPIC_PAYMENT_RESULT: PAYMENT_RESULT
+  USER_SERVICE_URL: http://user-service:8082
+  SCHEMA_REGISTRY_URL: http://schema-registry:8081
+  SPRING_LIQUIBASE_CHANGE_LOG: classpath:db/changelog/db.changelog-master.xml

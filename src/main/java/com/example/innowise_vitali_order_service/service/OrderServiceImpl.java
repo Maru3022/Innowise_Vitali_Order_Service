@@ -16,6 +16,7 @@ import com.example.innowise_vitali_order_service.mapper.OrderMapper;
 import com.example.innowise_vitali_order_service.repository.ItemRepository;
 import com.example.innowise_vitali_order_service.repository.OrderRepository;
 import com.example.innowise_vitali_order_service.repository.spec.OrderSpecification;
+import com.example.innowise_vitali_order_service.kafka.OrderKafkaProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +40,7 @@ public class OrderServiceImpl implements OrderService {
     private final ItemRepository itemRepository;
     private final UserServiceClient userServiceClient;
     private final OrderMapper orderMapper;
+    private final OrderKafkaProducer orderKafkaProducer;
 
     @Override
     @Transactional
@@ -60,6 +64,30 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalPrice(total);
 
         Order saved = orderRepository.save(order);
+
+        Long savedOrderId = saved.getId();
+        String savedUserId = String.valueOf(saved.getUserId());
+        BigDecimal savedTotal = saved.getTotalPrice();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    orderKafkaProducer.publishOrderCreated(
+                            String.valueOf(savedOrderId),
+                            savedUserId,
+                            savedTotal
+                    );
+                }
+            });
+        } else {
+            orderKafkaProducer.publishOrderCreated(
+                    String.valueOf(savedOrderId),
+                    savedUserId,
+                    savedTotal
+            );
+        }
+
         return orderMapper.toResponseWithUser(saved, fetchUserInfo(saved.getUserId()));
     }
 
@@ -122,11 +150,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private UserInfo fetchUserInfo(Long userId) {
-        try {
-            return userServiceClient.getUserByEmail(userId + "@placeholder.com");
-        } catch (Exception e) {
-            log.warn("Could not fetch user info for userId={}: {}", userId, e.getMessage());
-            return null;
-        }
+        return userServiceClient.getUserById(userId);
     }
 }

@@ -7,6 +7,7 @@ import com.example.innowise_vitali_order_service.entity.Order;
 import com.example.innowise_vitali_order_service.entity.OrderItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -32,8 +33,8 @@ public interface OrderMapper {
 
     List<OrderResponse> toResponseList(List<Order> orders);
 
-    @Mapping(target = "itemId", source = "item.id")
-    @Mapping(target = "itemName", source = "item.name")
-    @Mapping(target = "itemPrice", source = "item.price")
-    OrderItemResponse toItemResponse(OrderItem orderItem);
+    @Mapping(target = "itemId", expression = "java(orderItem.getItem().getId())")
+    @Mapping(target = "itemName", expression = "java(orderItem.getItem().getName())")
+    @Mapping(target = "quantity", source = "quantity")
+    OrderItemResponse toOrderItemResponse(OrderItem orderItem);
 }
