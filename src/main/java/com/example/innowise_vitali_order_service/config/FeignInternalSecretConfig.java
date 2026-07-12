@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class FeignInternalSecretConfig {
 
-    @Value("${internal.secret}")
+    @Value("${internal.secret:dev-internal-secret}")
     private String internalSecret;
 
     @Bean
