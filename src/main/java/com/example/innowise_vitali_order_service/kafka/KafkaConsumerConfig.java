@@ -26,7 +26,7 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
-    @Value("${schema.registry.url}")
+    @Value("${schema.registry.url:http://localhost:8081}")
     private String schemaRegistryUrl;
 
     @Bean
