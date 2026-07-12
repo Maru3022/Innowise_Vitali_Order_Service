@@ -1,8 +1,6 @@
 package com.example.innowise_vitali_order_service.kafka;
 
 import com.example.events.OrderCreatedEvent;
-import org.apache.avro.Conversions;
-import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.BinaryEncoder;
@@ -37,9 +35,6 @@ class AvroDecimalEncodingTest {
         SpecificDatumReader<OrderCreatedEvent> reader = new SpecificDatumReader<>(schema);
         OrderCreatedEvent decoded = reader.read(null, decoder);
 
-        BigDecimal decodedValue = new Conversions.DecimalConversion()
-                .fromBytes(decoded.getTotalPrice(), schema.getField("totalPrice").schema(), LogicalTypes.decimal(19, 2));
-
-        assertEquals(original, decodedValue);
+        assertEquals(original, decoded.getTotalPrice());
     }
 }

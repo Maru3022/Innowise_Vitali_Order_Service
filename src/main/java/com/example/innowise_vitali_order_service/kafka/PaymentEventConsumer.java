@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentEventConsumer {
 
     private final OrderRepository orderRepository;
+    private final AvroEventMapper avroEventMapper;
 
     @KafkaListener(
             topics = "${kafka.topic.payment-result}",
@@ -23,33 +24,35 @@ public class PaymentEventConsumer {
     )
     @Transactional
     public void consume(com.example.events.PaymentEvent event) {
-        log.info("Received PaymentEvent: paymentId={}, orderId={}, status={}",
-                event.getPaymentId(), event.getOrderId(), event.getStatus());
+        PaymentEvent paymentEvent = avroEventMapper.toPaymentDomain(event);
 
-        OrderStatus newStatus = switch (event.getStatus().name()) {
-            case "SUCCESS" -> OrderStatus.PAID;
-            case "FAILED", "REJECTED" -> OrderStatus.CANCELLED;
+        log.info("Received PaymentEvent: paymentId={}, orderId={}, status={}",
+                paymentEvent.getPaymentId(), paymentEvent.getOrderId(), paymentEvent.getStatus());
+
+        OrderStatus newStatus = switch (paymentEvent.getStatus()) {
+            case SUCCESS -> OrderStatus.PAID;
+            case FAILED, REJECTED -> OrderStatus.CANCELLED;
             default -> null;
         };
 
         if (newStatus == null) {
             log.warn("Ignoring PaymentEvent with status={} for orderId={}",
-                    event.getStatus(), event.getOrderId());
+                    paymentEvent.getStatus(), paymentEvent.getOrderId());
             return;
         }
 
         Long orderId;
         try {
-            orderId = Long.parseLong(event.getOrderId());
+            orderId = Long.parseLong(paymentEvent.getOrderId());
         } catch (NumberFormatException e) {
             log.error("Invalid orderId format '{}' in paymentId={}",
-                    event.getOrderId(), event.getPaymentId());
+                    paymentEvent.getOrderId(), paymentEvent.getPaymentId());
             return;
         }
 
         Order order = orderRepository.findById(orderId).orElse(null);
         if (order == null) {
-            log.error("Order not found: orderId={}, paymentId={}", orderId, event.getPaymentId());
+            log.error("Order not found: orderId={}, paymentId={}", orderId, paymentEvent.getPaymentId());
             return;
         }
 
@@ -57,6 +60,6 @@ public class PaymentEventConsumer {
         orderRepository.save(order);
 
         log.info("Order {} status updated to {} (paymentId={})",
-                order.getId(), newStatus, event.getPaymentId());
+                order.getId(), newStatus, paymentEvent.getPaymentId());
     }
 }
